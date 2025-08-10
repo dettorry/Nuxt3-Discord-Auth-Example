@@ -1,11 +1,3 @@
-<script setup lang="ts">
-
-console.log("callback");
-
-</script>
-
 <template>
-  <div>
-    <NuxtWelcome />
-  </div>
+  <p>Connexion établie avec succès !</p>
 </template>

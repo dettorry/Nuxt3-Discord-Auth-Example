@@ -1,11 +1,9 @@
 <script setup lang="ts">
 
-console.log(useAuth().loginWith('discord'));
+  useAuth().loginWith('discord');
 
 </script>
 
 <template>
-  <div>
-    <NuxtWelcome />
-  </div>
+  <p>Vous allez être redirigé vers Discord pour vous connecter...</p>
 </template>
