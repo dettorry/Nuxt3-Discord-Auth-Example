@@ -42,16 +42,35 @@
 
   // Generate breadcrumbs based on current route
   const breadcrumbs = computed(() => {
-    const crumbs = [{ name: 'Accueil', href: '/' }];
+    const crumbs: Array<{ name: string; href?: string }> = [];
 
     if (route.path === '/') {
-      crumbs[0] = { name: 'Marchés Boursiers', href: '/' };
-    } else if (route.path === '/portfolio') {
-      crumbs[0] = { name: 'Portfolio', href: '/portfolio' };
-    } else if (route.path === '/settings') {
-      crumbs[0] = { name: 'Paramètres', href: '/settings' };
+      crumbs.push({ name: 'Marchés Boursiers', href: '/' });
+      return crumbs;
     }
 
+    if (route.path === '/portfolio') {
+      crumbs.push({ name: 'Portfolio' });
+      return crumbs;
+    }
+
+    if (route.path === '/settings') {
+      crumbs.push({ name: 'Paramètres' });
+      return crumbs;
+    }
+
+    // Stocks details page: /stocks/:symbol
+    if (route.path.startsWith('/stocks')) {
+      crumbs.push({ name: 'Marchés Boursiers', href: '/' });
+      const sym = ((route.params as any)?.symbol ?? '').toString().toUpperCase();
+      if (sym) {
+        crumbs.push({ name: sym });
+      }
+      return crumbs;
+    }
+
+    // Fallback
+    crumbs.push({ name: 'Accueil', href: '/' });
     return crumbs;
   });
 

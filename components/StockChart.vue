@@ -15,15 +15,20 @@
 
   ChartJS.register(Title, Tooltip, Legend, LineElement, PointElement, CategoryScale, LinearScale);
 
-  const props = withDefaults(defineProps<{
-    prices: number[];
-    labels: string[];
-    period?: '1J' | '1W' | '1M' | '6M' | 'YTD' | '1Y' | '5Y' | 'ALL';
-    maxPoints?: number; // cap points for performance/clarity
-  }>(), {
-    maxPoints: 1000,
-    period: '1M',
-  });
+  const props = withDefaults(
+    defineProps<{
+      prices: number[];
+      labels: string[];
+      period?: '1J' | '1W' | '1M' | '6M' | 'YTD' | '1Y' | '5Y' | 'ALL';
+      maxPoints?: number; // cap points for performance/clarity
+      height?: number | string; // fixed container height for responsive chart
+    }>(),
+    {
+      maxPoints: 1000,
+      period: '1M',
+      height: 280,
+    },
+  );
 
   function downsampleAverage(values: number[], labels: string[], maxPoints: number) {
     const len = Math.min(values.length, labels.length);
@@ -178,8 +183,11 @@
       },
     },
   }));
+  
 </script>
 
 <template>
-  <Line :data="chartData" :options="chartOptions" />
+  <div :style="{ height: typeof props.height === 'number' ? `${props.height}px` : String(props.height) }">
+    <Line :data="chartData" :options="chartOptions" />
+  </div>
 </template>
