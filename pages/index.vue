@@ -2,7 +2,16 @@
   import { Icon } from '@iconify/vue';
 
   const { loggedIn } = useAuth();
-  const stocks = ref<any[]>([]);
+  type StockItem = {
+    symbol: string;
+    price: number;
+    change: number;
+    changePercent: string; // comes formatted to 2 decimals from API
+    volume: number;
+    previousClose: number;
+  };
+
+  const stocks = ref<StockItem[]>([]);
   const loading = ref(false);
   const errorMsg = ref<string | null>(null);
 
@@ -21,10 +30,13 @@
     stocks.value = [];
 
     try {
-      const { data, error } = await useFetch<{ stocks: any[] }>('/api/stocks', {
-        method: 'get',
-        cache: 'no-cache',
-      });
+      const { data, error } = await useFetch<{ stocks: StockItem[] }>(
+        '/api/stocks',
+        {
+          method: 'get',
+          cache: 'no-cache',
+        },
+      );
 
       if (error.value) {
         const msg = (error.value as any)?.message ?? 'Failed to fetch stock data';
@@ -106,10 +118,11 @@
 
     <!-- Stocks Grid -->
     <div v-else-if="stocks.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      <div
+      <NuxtLink
         v-for="stock in stocks"
         :key="stock.symbol"
-        class="card hover:shadow-md transition-shadow duration-200"
+        :to="`/stocks/${stock.symbol}`"
+        class="card hover:shadow-md transition-shadow duration-200 block"
       >
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-gray-900">
@@ -153,7 +166,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </NuxtLink>
     </div>
 
     <!-- Empty State -->
