@@ -4,6 +4,8 @@
   import { useRoute } from 'vue-router';
   import { Icon } from '@iconify/vue';
   import StockChart from '~/components/StockChart.vue';
+  // Client-only page to avoid SSR issues with charting and ensure onMounted triggers on hard reload
+  definePageMeta({ ssr: false });
 
   // Balance polling/refresh composable
   const { refresh: refreshUnbBalance, applyDelta, balance: dynBalance } = useUnbBalance();
@@ -117,6 +119,11 @@
     loading.value = true;
     errorMsg.value = null;
     try {
+      if (!symbol.value) {
+        // Wait for route param to be ready
+        loading.value = false;
+        return;
+      }
       const quoteReq = useFetch(`/api/stocks/quote?symbol=${symbol.value}`);
       const { data, error } = await useFetch(`/api/stocks/history?symbol=${symbol.value}&range=${selectedPeriod.value}`);
       if (error.value) {
@@ -137,7 +144,11 @@
 
   onMounted(fetchHistory);
   watch(() => selectedPeriod.value, fetchHistory);
-  watch(() => route.params.symbol, () => { fetchHistory(); recomputeHeld(); });
+  watch(
+    () => route.params.symbol,
+    () => { fetchHistory(); recomputeHeld(); },
+    { immediate: true },
+  );
   onMounted(() => {
     recomputeHeld();
     if (process.client) {
