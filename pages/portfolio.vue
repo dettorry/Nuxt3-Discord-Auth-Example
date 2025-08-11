@@ -41,24 +41,27 @@
           <div class="text-sm text-gray-600">
             Valeur de marché
           </div>
-          <div class="text-2xl font-bold">
-            {{ formatCurrency(totalMarketValue) }}
+          <div class="flex gap-1 items-center text-2xl font-bold">
+            <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
+            <span>{{ formatCurrency(totalMarketValue) }}</span>
           </div>
         </div>
         <div class="card">
           <div class="text-sm text-gray-600">
             Coût total
           </div>
-          <div class="text-2xl font-bold">
-            {{ formatCurrency(totalCost) }}
+          <div class="flex gap-1 items-center text-2xl font-bold">
+            <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
+            <span>{{ formatCurrency(totalCost) }}</span>
           </div>
         </div>
         <div class="card">
           <div class="text-sm text-gray-600">
             P/L total
           </div>
-          <div :class="['text-2xl font-bold', totalPL >= 0 ? 'text-green-600' : 'text-red-600']">
-            {{ formatCurrency(totalPL) }} ({{ formatPercent(totalPLPct) }})
+          <div :class="['flex gap-1 items-center text-2xl font-bold', totalPL >= 0 ? 'text-green-600' : 'text-red-600']">
+            <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
+            <span>{{ formatCurrency(totalPL) }} ({{ formatPercent(totalPLPct) }})</span>
           </div>
         </div>
       </div>
@@ -95,19 +98,31 @@
                 {{ p.symbol }}
               </td>
               <td class="py-2 pr-4">
-                {{ p.quantity }}
+                {{ formatCurrency(p.quantity) }}
               </td>
               <td class="py-2 pr-4">
-                {{ formatCurrency(p.avgCost) }}
+                <span class="inline-flex items-center gap-1">
+                  <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
+                  <span>{{ formatCurrency(p.avgCost) }}</span>
+                </span>
               </td>
               <td class="py-2 pr-4">
-                {{ formatCurrency(p.currentPrice) }}
+                <span class="inline-flex items-center gap-1">
+                  <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
+                  <span>{{ formatCurrency(p.currentPrice) }}</span>
+                </span>
               </td>
               <td class="py-2 pr-4">
-                {{ formatCurrency(p.marketValue) }}
+                <span class="inline-flex items-center gap-1">
+                  <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
+                  <span>{{ formatCurrency(p.marketValue) }}</span>
+                </span>
               </td>
               <td class="py-2 pr-4" :class="p.pl >= 0 ? 'text-green-600' : 'text-red-600'">
-                {{ formatCurrency(p.pl) }} ({{ formatPercent(p.plPct) }})
+                <span class="inline-flex items-center gap-1">
+                  <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
+                  <span>{{ formatCurrency(p.pl) }} ({{ formatPercent(p.plPct) }})</span>
+                </span>
               </td>
               <td class="py-2 pr-4">
                 <NuxtLink :to="`/stocks/${p.symbol}`" class="text-sm text-green-700 hover:underline">
@@ -187,8 +202,12 @@
     }));
   }
 
-  function formatCurrency(n: number) {
-    return `$${Number(n).toFixed(0)}`; // integer amounts
+  function formatCurrency(n: number | null | undefined) {
+    const v = Math.trunc(Number(n ?? 0));
+    if (!Number.isFinite(v)) {
+      return '0';
+    }
+    return v.toLocaleString('fr-FR');
   }
   function formatPercent(n: number) {
     return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;

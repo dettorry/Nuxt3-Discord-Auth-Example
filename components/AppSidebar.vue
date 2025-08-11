@@ -63,8 +63,12 @@
               {{ user.username }}
             </p>
             <div v-if="dynBalance || balance" class="flex items-center text-xs text-gray-500 gap-1">
-              <span>Solde: {{ formatCoins(dynBalance?.total ?? balance?.total ?? 0) }}</span>
-              <Icon icon="mdi:chicken-leg-outline" />
+              <span>Solde:
+                <span class="inline-flex items-center gap-1">
+                  {{ formatCoins(dynBalance?.total ?? balance?.total ?? 0) }}
+                  <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
+                </span>
+              </span>
             </div>
           </div>
         </div>

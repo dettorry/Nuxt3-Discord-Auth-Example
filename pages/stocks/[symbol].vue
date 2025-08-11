@@ -2,9 +2,11 @@
   /* eslint-disable import/extensions, import/no-unresolved, indent, object-curly-newline, curly, vue/singleline-html-element-content-newline */
   import { ref, watch, onMounted, computed } from 'vue';
   import { useRoute } from 'vue-router';
+  import { Icon } from '@iconify/vue';
   import StockChart from '~/components/StockChart.vue';
+
   // Balance polling/refresh composable
-  const { refresh: refreshUnbBalance, applyDelta } = useUnbBalance();
+  const { refresh: refreshUnbBalance, applyDelta, balance: dynBalance } = useUnbBalance();
 
   const route = useRoute();
   const symbol = computed(() => String(route.params.symbol));
@@ -29,6 +31,15 @@
   const qty = ref<number>(1);
   const txLoading = ref(false);
   const txMsg = ref<string | null>(null);
+  const held = ref<number>(0);
+
+  const unitPriceRounded = computed(() => Math.round(Number(quote.value?.price || 0)) || 0);
+  const quantitySafe = computed(() => Math.max(1, Math.floor(qty.value)));
+  const totalAmount = computed(() => quantitySafe.value * unitPriceRounded.value);
+  const canBuy = computed(() => {
+    const bank = Number((dynBalance as any)?.value?.bank ?? (dynBalance as any)?.bank ?? 0);
+    return totalAmount.value > 0 && bank >= totalAmount.value;
+  });
 
   // Local portfolio helpers (stored per user+guild if available in auth/config)
   type Lot = { symbol: string; quantity: number; unitPrice: number; ts: number };
@@ -79,9 +90,20 @@
     writePortfolio(reduced.list);
   }
 
+  function recomputeHeld() {
+    const lots = readPortfolio();
+    held.value = lots.filter(l => l.symbol === symbol.value).reduce((a, b) => a + b.quantity, 0);
+  }
+
   function formatPrice(n: number | null | undefined) {
     if (n == null) return '-';
-    return `$${Number(n).toFixed(2)}`;
+    return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function formatCoins(n: number | null | undefined) {
+    if (n == null) return '0';
+    const v = Math.trunc(Number(n));
+    if (!Number.isFinite(v)) return '0';
+    return v.toLocaleString('fr-FR');
   }
   function formatNumber(n: number | null | undefined) {
     if (n == null) return '-';
@@ -115,7 +137,15 @@
 
   onMounted(fetchHistory);
   watch(() => selectedPeriod.value, fetchHistory);
-  watch(() => route.params.symbol, fetchHistory);
+  watch(() => route.params.symbol, () => { fetchHistory(); recomputeHeld(); });
+  onMounted(() => {
+    recomputeHeld();
+    if (process.client) {
+      window.addEventListener('storage', (e: StorageEvent) => {
+        if (e.key && e.key.startsWith('portfolio:')) recomputeHeld();
+      });
+    }
+  });
 
   async function buy() {
     txMsg.value = null;
@@ -146,7 +176,8 @@
       });
       if (error.value) throw new Error((error.value as any)?.message || 'Achat échoué');
       addLot({ symbol: symbol.value, quantity, unitPrice, ts: Date.now() });
-      txMsg.value = `Achat réussi: ${quantity} ${symbol.value} à $${unitPrice}`;
+      recomputeHeld();
+      txMsg.value = `Achat réussi: ${quantity} ${symbol.value} à ${formatCoins(unitPrice)}`;
       // Optimistic: update balance instantly, then refresh in background
       applyDelta(-unitPrice * quantity);
       if (uid && gid) {
@@ -179,8 +210,8 @@
       const gid = (cfg as any)?.GUILD_ID;
       // Optional: check portfolio holdings locally before selling
       const lots = readPortfolio();
-      const held = lots.filter(l => l.symbol === symbol.value).reduce((a, b) => a + b.quantity, 0);
-      if (held < quantity) {
+      const heldQty = lots.filter(l => l.symbol === symbol.value).reduce((a, b) => a + b.quantity, 0);
+      if (heldQty < quantity) {
         throw new Error('Quantité insuffisante en portefeuille');
       }
       const { error } = await useFetch('/api/stocks/sell', {
@@ -196,7 +227,8 @@
       });
       if (error.value) throw new Error((error.value as any)?.message || 'Vente échouée');
       removeFromPortfolio(symbol.value, quantity);
-      txMsg.value = `Vente réussie: ${quantity} ${symbol.value} à $${unitPrice}`;
+      recomputeHeld();
+      txMsg.value = `Vente réussie: ${quantity} ${symbol.value} à ${formatCoins(unitPrice)}`;
       // Optimistic: update balance instantly, then refresh in background
       applyDelta(unitPrice * quantity);
       if (uid && gid) {
@@ -212,9 +244,9 @@
 </script>
 
 <template>
-  <div class="h-full flex flex-col items-center justify-center gap-6">
+  <div class="h-full flex flex-col items-center justify-center gap-6 px-4 md:px-0">
     <!-- Header: Name, Price, Change -->
-    <div v-if="quote" class="w-full max-w-xl flex items-start justify-between gap-4">
+    <div v-if="quote" class="w-full max-w-4xl flex items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">
           {{ quote.longName || quote.shortName || symbol }}
@@ -222,7 +254,10 @@
         <div class="text-xs text-gray-500">{{ quote.symbol }} · {{ quote.currency }}</div>
       </div>
       <div class="text-right">
-        <div class="text-3xl font-bold text-gray-900">{{ formatPrice(quote.price) }}</div>
+        <div class="flex gap-1 items-center text-3xl font-bold text-gray-900">
+          <Icon class="align-middle" icon="mdi:chicken-leg-outline" />
+          <span>{{ formatPrice(quote.price) }}</span>
+        </div>
         <div :class="[ 'text-sm', (quote.change ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' ]">
           {{ quote.change?.toFixed(2) ?? '-' }} ({{ quote.changePercent != null ? quote.changePercent.toFixed(2) : '-' }}%)
         </div>
@@ -230,7 +265,7 @@
     </div>
 
     <!-- Period selector -->
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap gap-2 w-full max-w-4xl">
       <button
         v-for="period in periods"
         :key="period.value"
@@ -245,7 +280,8 @@
         {{ period.label }}
       </button>
     </div>
-    <div class="w-full max-w-xl">
+
+    <div class="w-full max-w-4xl">
       <div v-if="loading" class="flex items-center justify-center py-12">
         <span class="text-gray-600">Chargement du graphique...</span>
       </div>
@@ -256,7 +292,15 @@
 
       <!-- Trading Controls -->
       <div v-if="quote" class="mt-4 rounded-md border border-gray-100 bg-white p-4 shadow-sm">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center justify-between text-sm text-gray-700">
+          <div>En portefeuille: <span class="font-medium">{{ held }}</span> action<span v-if="held !== 1">s</span></div>
+          <div class="flex items-center gap-1">
+            <span>Prix unitaire:</span>
+            <Icon class="align-middle" icon="mdi:chicken-leg-outline" />
+            <span class="font-medium">{{ formatCoins(unitPriceRounded) }}</span>
+          </div>
+        </div>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
           <label class="text-sm text-gray-700" for="qty">Quantité</label>
           <input
             id="qty"
@@ -266,11 +310,19 @@
             step="1"
             class="w-24 rounded border-gray-300 focus:ring-green-500 focus:border-green-500"
           >
-          <button :disabled="txLoading" class="btn-primary" @click="buy">Acheter</button>
-          <button :disabled="txLoading" class="btn-secondary" @click="sell">Vendre</button>
+          <div class="text-sm text-gray-700 flex items-center gap-1">
+            <span>Total:</span>
+            <Icon class="align-middle" icon="mdi:chicken-leg-outline" />
+            <span class="font-semibold">{{ formatCoins(totalAmount) }}</span>
+          </div>
+          <button :disabled="txLoading || !canBuy" class="btn-primary" @click="buy">Acheter</button>
+          <button :disabled="txLoading || held <= 0" class="btn-secondary" @click="sell">Vendre</button>
+        </div>
+        <div class="mt-2 text-xs text-gray-500 flex flex-wrap items-center gap-2">
+          <span>Le prix est arrondi à l'unité. Débit/Crédit via la banque UnbelievaBoat.</span>
+          <span v-if="canBuy === false" class="text-red-600">Fonds insuffisants pour acheter {{ quantitySafe }} action<span v-if="quantitySafe !== 1">s</span>.</span>
         </div>
         <p v-if="txMsg" class="mt-2 text-sm" :class="txMsg.includes('réussi') ? 'text-green-600' : 'text-red-600'">{{ txMsg }}</p>
-        <p class="mt-1 text-xs text-gray-500">Le prix utilisé est arrondi à l'unité, et le débit/crédit se fait depuis/vers la banque UnbelievaBoat après vérification des fonds.</p>
       </div>
 
       <!-- Stats Grid -->
