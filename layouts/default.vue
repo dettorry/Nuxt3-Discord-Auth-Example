@@ -2,26 +2,26 @@
   <div class="min-h-screen bg-gray-50">
     <div v-if="user" class="flex">
       <!-- Sidebar -->
-      <AppSidebar 
-        :is-collapsed="sidebarCollapsed" 
-        :user="user" 
-        :balance="balance" 
+      <AppSidebar
+        :is-collapsed="sidebarCollapsed"
+        :user="user"
+        :balance="balance"
       />
-      
+
       <!-- Main Content -->
       <div class="flex-1 flex flex-col min-w-0">
-        <AppHeader 
-          :user="user" 
+        <AppHeader
+          :user="user"
           :breadcrumbs="breadcrumbs"
-          @toggle-sidebar="toggleSidebar" 
+          @toggle-sidebar="toggleSidebar"
         />
-        
+
         <main class="flex-1 p-6">
           <slot />
         </main>
       </div>
     </div>
-    
+
     <!-- Auth pages layout -->
     <div v-else class="min-h-screen">
       <slot />
@@ -32,7 +32,7 @@
 <script setup lang="ts">
   const { user } = useAuth();
   const route = useRoute();
-  
+
   const sidebarCollapsed = ref(false);
   const balance = ref<any | null>(null);
 
@@ -43,15 +43,15 @@
   // Generate breadcrumbs based on current route
   const breadcrumbs = computed(() => {
     const crumbs = [{ name: 'Accueil', href: '/' }];
-    
+
     if (route.path === '/') {
-      crumbs[0] = { name: 'Marchés Boursiers' };
+      crumbs[0] = { name: 'Marchés Boursiers', href: '/' };
     } else if (route.path === '/portfolio') {
-      crumbs.push({ name: 'Portfolio' });
+      crumbs[0] = { name: 'Portfolio', href: '/portfolio' };
     } else if (route.path === '/settings') {
-      crumbs.push({ name: 'Paramètres' });
+      crumbs[0] = { name: 'Paramètres', href: '/settings' };
     }
-    
+
     return crumbs;
   });
 

@@ -1,6 +1,6 @@
 <template>
   <div class="sticky top-0 h-screen bg-white border-r border-gray-200">
-    <div 
+    <div
       :class="[
         'flex flex-col h-screen overflow-y-auto transition-all duration-300 ease-in-out',
         isCollapsed ? 'w-20' : 'w-56'
@@ -8,12 +8,9 @@
     >
       <!-- Logo/Brand -->
       <div class="flex items-center justify-center h-16 border-b border-gray-200">
-        <div v-if="!isCollapsed" class="flex items-center space-x-2">
-          <img src="/assets/img/cup-mascot.png" alt="Logo" class="w-8 h-8 rounded-lg object-cover" />
-          <span class="font-semibold text-gray-900">Chicken Stocks</span>
-        </div>
-        <div v-else class="w-8 h-8 rounded-lg flex items-center justify-center">
-          <img src="/assets/img/cup-mascot.png" alt="Logo" class="w-8 h-8 object-cover" />
+        <div class="flex items-center space-x-2">
+          <img src="/assets/img/cup-mascot.png" alt="Logo" class="w-8 h-8 rounded-lg object-cover"></img>
+          <span v-if="!isCollapsed" class="font-semibold text-gray-900">Chicken Stocks</span>
         </div>
       </div>
 
@@ -60,7 +57,7 @@
             :src="`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`"
             :alt="user.username"
             class="w-10 h-10 rounded-full"
-          />
+          ></img>
           <div v-if="!isCollapsed" class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-900 truncate">
               {{ user.username }}

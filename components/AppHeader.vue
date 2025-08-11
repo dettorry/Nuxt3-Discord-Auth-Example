@@ -4,8 +4,8 @@
       <div class="flex items-center space-x-4">
         <!-- Sidebar Toggle -->
         <button
-          @click="$emit('toggle-sidebar')"
           class="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+          @click="$emit('toggle-sidebar')"
         >
           <Icon icon="heroicons-outline:bars-3" class="w-5 h-5 text-gray-600" />
         </button>
@@ -15,10 +15,10 @@
           <ol class="flex items-center space-x-2">
             <li v-for="(crumb, index) in breadcrumbs" :key="index">
               <div class="flex items-center">
-                <Icon 
-                  v-if="index > 0" 
+                <Icon
+                  v-if="index > 0"
                   icon="heroicons-outline:chevron-right"
-                  class="w-4 h-4 text-gray-400 mr-2" 
+                  class="w-4 h-4 text-gray-400 mr-2"
                 />
                 <NuxtLink
                   v-if="crumb.href && index < breadcrumbs.length - 1"

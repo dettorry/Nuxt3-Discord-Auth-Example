@@ -1,5 +1,7 @@
 <script setup lang="ts">
-  const { user, loggedIn } = useAuth();
+  import { Icon } from '@iconify/vue';
+
+  const { loggedIn } = useAuth();
   const stocks = ref<any[]>([]);
   const loading = ref(false);
   const errorMsg = ref<string | null>(null);
@@ -13,22 +15,22 @@
     if (!loggedIn) {
       return;
     }
-    
+
     loading.value = true;
     errorMsg.value = null;
     stocks.value = [];
-    
+
     try {
       const { data, error } = await useFetch<{ stocks: any[] }>('/api/stocks', {
         method: 'get',
         cache: 'no-cache',
       });
-      
+
       if (error.value) {
         const msg = (error.value as any)?.message ?? 'Failed to fetch stock data';
         throw new Error(msg);
       }
-      
+
       stocks.value = data.value?.stocks ?? [];
     } catch (e: any) {
       errorMsg.value = e?.message ?? 'Erreur lors de la récupération des données boursières.';
@@ -47,12 +49,13 @@
   }
 
   function formatVolume(volume: number): string {
+    let formattedVolume = volume.toString();
     if (volume >= 1000000) {
-      return `${(volume / 1000000).toFixed(1)}M`;
+      formattedVolume = `${(volume / 1000000).toFixed(1)}M`;
     } else if (volume >= 1000) {
-      return `${(volume / 1000).toFixed(1)}K`;
+      formattedVolume = `${(volume / 1000).toFixed(1)}K`;
     }
-    return volume.toString();
+    return formattedVolume;
   }
 
   // Fetch stocks on component mount
@@ -66,14 +69,21 @@
 <template>
   <div>
     <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">Marchés Boursiers</h1>
-      <p class="text-gray-600">Suivez les performances des principales actions en temps réel</p>
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">
+        Marchés Boursiers
+      </h1>
+      <p class="text-gray-600">
+        Suivez les performances des principales actions en temps réel
+      </p>
     </div>
 
     <!-- Loading State -->
     <div v-if="loading" class="flex items-center justify-center py-12">
       <div class="flex items-center space-x-3">
-        <div class="w-6 h-6 border-2 border-discord-200 border-t-discord-500 rounded-full animate-spin"></div>
+        <Icon
+          class="w-6 h-6 text-discord-500 animate-spin"
+          icon="mdi:loading"
+        />
         <span class="text-gray-600">Chargement des données boursières...</span>
       </div>
     </div>
@@ -86,9 +96,9 @@
         </svg>
         <span>{{ errorMsg }}</span>
       </div>
-      <button 
-        @click="fetchStocks" 
+      <button
         class="btn-primary mt-4"
+        @click="fetchStocks"
       >
         Réessayer
       </button>
@@ -96,31 +106,33 @@
 
     <!-- Stocks Grid -->
     <div v-else-if="stocks.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      <div 
-        v-for="stock in stocks" 
-        :key="stock.symbol" 
+      <div
+        v-for="stock in stocks"
+        :key="stock.symbol"
         class="card hover:shadow-md transition-shadow duration-200"
       >
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900">{{ stock.symbol }}</h3>
-          <div 
+          <h3 class="text-lg font-semibold text-gray-900">
+            {{ stock.symbol }}
+          </h3>
+          <div
             :class="[
               'px-2 py-1 rounded-full text-xs font-medium',
-              stock.change >= 0 
-                ? 'bg-green-100 text-green-800' 
+              stock.change >= 0
+                ? 'bg-green-100 text-green-800'
                 : 'bg-red-100 text-red-800'
             ]"
           >
             {{ formatChange(stock.change) }}
           </div>
         </div>
-        
+
         <div class="space-y-3">
           <div class="flex items-center justify-between">
             <span class="text-2xl font-bold text-gray-900">
               {{ formatPrice(stock.price) }}
             </span>
-            <span 
+            <span
               :class="[
                 'text-sm font-medium',
                 stock.change >= 0 ? 'text-green-600' : 'text-red-600'
@@ -129,7 +141,7 @@
               {{ stock.changePercent }}%
             </span>
           </div>
-          
+
           <div class="pt-3 border-t border-gray-100">
             <div class="flex justify-between text-sm text-gray-600">
               <span>Volume</span>
@@ -146,14 +158,19 @@
 
     <!-- Empty State -->
     <div v-else class="card text-center py-12">
-      <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-      <h3 class="text-lg font-medium text-gray-900 mb-2">Aucune donnée disponible</h3>
-      <p class="text-gray-600 mb-4">Impossible de récupérer les données boursières pour le moment.</p>
-      <button 
-        @click="fetchStocks" 
+      <Icon
+        class="w-12 h-12 text-gray-400 mx-auto mb-4"
+        icon="mdi:chart-line"
+      />
+      <h3 class="text-lg font-medium text-gray-900 mb-2">
+        Aucune donnée disponible
+      </h3>
+      <p class="text-gray-600 mb-4">
+        Impossible de récupérer les données boursières pour le moment.
+      </p>
+      <button
         class="btn-primary"
+        @click="fetchStocks"
       >
         Réessayer
       </button>
@@ -161,10 +178,10 @@
 
     <!-- Refresh Button -->
     <div v-if="stocks.length > 0" class="mt-8 text-center">
-      <button 
-        @click="fetchStocks" 
+      <button
         :disabled="loading"
         class="btn-secondary"
+        @click="fetchStocks"
       >
         <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -180,4 +197,3 @@
     transform: translateY(-2px);
   }
 </style>
- 
