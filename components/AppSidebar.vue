@@ -55,15 +55,15 @@
         <div v-if="user" class="flex items-center space-x-3">
           <img
             :src="`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`"
-            :alt="user.username"
+            :alt="String(user?.username || '')"
             class="w-10 h-10 rounded-full"
           ></img>
           <div v-if="!isCollapsed" class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-900 truncate">
               {{ user.username }}
             </p>
-            <div v-if="balance" class="flex items-center text-xs text-gray-500 gap-1">
-              <span>Solde: {{ balance.total || 0 }}</span>
+            <div v-if="dynBalance || balance" class="flex items-center text-xs text-gray-500 gap-1">
+              <span>Solde: {{ formatCoins(dynBalance?.total ?? balance?.total ?? 0) }}</span>
               <Icon icon="mdi:chicken-leg-outline" />
             </div>
           </div>
@@ -76,11 +76,45 @@
 <script setup lang="ts">
   import { Icon } from '@iconify/vue';
 
+  const runtime = useRuntimeConfig?.();
+  const { user: authUser } = useAuth();
+  const { balance: dynBalance, start: startBalance, stop: stopBalance } = useUnbBalance();
+
   interface Props {
     isCollapsed: boolean;
     user: any;
     balance: any;
   }
 
-  defineProps<Props>();
+  const props = defineProps<Props>();
+  onMounted(() => {
+    const uid = (authUser as any)?.id
+      ?? (authUser as any)?.value?.id
+      ?? (props.user as any)?.id
+      ?? (props.user as any)?.value?.id;
+    const gid = (runtime as any)?.GUILD_ID;
+    startBalance(uid, gid, 15000);
+  });
+  onUnmounted(() => stopBalance());
+
+  // Format balance between 0 and 999M with K/M suffixes and fr-FR locale
+  function formatCoins(amount?: number | null) {
+    const n = Number(amount ?? 0);
+    if (!Number.isFinite(n)) {
+      return '0';
+    }
+    if (n < 1000) {
+      return Math.floor(n).toLocaleString('fr-FR');
+    }
+    if (n < 1_000_000) {
+      const v = n / 1000;
+      const digits = v < 100 ? 1 : 0;
+      const t = digits ? Math.trunc(v * 10) / 10 : Math.trunc(v);
+      return `${t.toLocaleString('fr-FR', { maximumFractionDigits: digits })}k`;
+    }
+    const v = n / 1_000_000;
+    const digits = v < 100 ? 1 : 0;
+    const t = digits ? Math.trunc(v * 10) / 10 : Math.trunc(v);
+    return `${t.toLocaleString('fr-FR', { maximumFractionDigits: digits })}M`;
+  }
 </script>

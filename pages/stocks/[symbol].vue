@@ -3,6 +3,8 @@
   import { ref, watch, onMounted, computed } from 'vue';
   import { useRoute } from 'vue-router';
   import StockChart from '~/components/StockChart.vue';
+  // Balance polling/refresh composable
+  const { refresh: refreshUnbBalance, applyDelta } = useUnbBalance();
 
   const route = useRoute();
   const symbol = computed(() => String(route.params.symbol));
@@ -145,6 +147,13 @@
       if (error.value) throw new Error((error.value as any)?.message || 'Achat échoué');
       addLot({ symbol: symbol.value, quantity, unitPrice, ts: Date.now() });
       txMsg.value = `Achat réussi: ${quantity} ${symbol.value} à $${unitPrice}`;
+      // Optimistic: update balance instantly, then refresh in background
+      applyDelta(-unitPrice * quantity);
+      if (uid && gid) {
+        // fire-and-forget to reconcile
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        refreshUnbBalance(uid, gid);
+      }
     } catch (e: any) {
       txMsg.value = e?.message || 'Achat échoué';
     } finally {
@@ -188,6 +197,12 @@
       if (error.value) throw new Error((error.value as any)?.message || 'Vente échouée');
       removeFromPortfolio(symbol.value, quantity);
       txMsg.value = `Vente réussie: ${quantity} ${symbol.value} à $${unitPrice}`;
+      // Optimistic: update balance instantly, then refresh in background
+      applyDelta(unitPrice * quantity);
+      if (uid && gid) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        refreshUnbBalance(uid, gid);
+      }
     } catch (e: any) {
       txMsg.value = e?.message || 'Vente échouée';
     } finally {
