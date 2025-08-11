@@ -4,9 +4,11 @@
   const { loggedIn } = useAuth();
   type StockItem = {
     symbol: string;
+    name?: string | null;
+    currency?: string | null;
     price: number;
     change: number;
-    changePercent: string; // comes formatted to 2 decimals from API
+    changePercent: string; // 2 decimals as string
     volume: number;
     previousClose: number;
   };
@@ -14,6 +16,8 @@
   const stocks = ref<StockItem[]>([]);
   const loading = ref(false);
   const errorMsg = ref<string | null>(null);
+  const search = ref('');
+  const lastQuery = ref<string | null>(null);
 
   // Redirect to login if not authenticated
   if (!loggedIn) {
@@ -44,6 +48,7 @@
       }
 
       stocks.value = data.value?.stocks ?? [];
+      lastQuery.value = null; // curated list mode
     } catch (e: any) {
       errorMsg.value = e?.message ?? 'Erreur lors de la récupération des données boursières.';
     } finally {
@@ -51,8 +56,52 @@
     }
   }
 
-  function formatPrice(price: number): string {
-    return `$${price.toFixed(2)}`;
+  async function runSearch() {
+    if (!loggedIn) {
+      await navigateTo('/auth/login');
+      return;
+    }
+
+    const q = search.value.trim();
+    if (!q) {
+      // Empty query -> curated list
+      await fetchStocks();
+      return;
+    }
+
+    loading.value = true;
+    errorMsg.value = null;
+    try {
+      const searchData = await $fetch<{ results: Array<{ symbol: string }> }>(
+        '/api/stocks/search',
+        { params: { q } },
+      );
+      const symbols = (searchData?.results || []).map(r => r.symbol).filter(Boolean).slice(0, 20);
+      lastQuery.value = q;
+      if (symbols.length === 0) {
+        stocks.value = [];
+        return;
+      }
+      const quotesData = await $fetch<{ stocks: StockItem[] }>(
+        '/api/stocks',
+        { params: { symbols: symbols.join(',') } },
+      );
+      stocks.value = quotesData?.stocks ?? [];
+    } catch (e: any) {
+      errorMsg.value = e?.message || 'Recherche échouée';
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  function formatPrice(price: number, currency?: string | null): string {
+    const cur = currency || 'USD';
+    // Fallback to USD-like formatting if Intl fails
+    try {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(price);
+    } catch {
+      return `$${price.toFixed(2)}`;
+    }
   }
 
   function formatChange(change: number): string {
@@ -76,6 +125,8 @@
       fetchStocks();
     }
   });
+
+  // No client-side filtering; results are driven by runSearch/fetchStocks
 </script>
 
 <template>
@@ -87,6 +138,33 @@
       <p class="text-gray-600">
         Suivez les performances des principales actions en temps réel
       </p>
+      <!-- Search + Refresh -->
+      <div class="mt-4 max-w-2xl">
+        <div class="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          <div class="relative flex-1">
+            <Icon class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" icon="mdi:magnify" />
+            <input
+              v-model.trim="search"
+              type="text"
+              placeholder="Rechercher une action (symbole ou nom)"
+              class="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 focus:ring-green-500 focus:border-green-500"
+              @keyup.enter="runSearch"
+            >
+          </div>
+          <button
+            :disabled="loading"
+            class="btn-secondary whitespace-nowrap"
+            @click="runSearch"
+          >
+            <Icon class="w-4 h-4 mr-1 inline" icon="mdi:magnify" />
+            Rechercher
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="lastQuery" class="-mt-6 mb-4 text-sm text-gray-500">
+      Résultats pour « {{ lastQuery }} »
     </div>
 
     <!-- Loading State -->
@@ -124,10 +202,18 @@
         :to="`/stocks/${stock.symbol}`"
         class="card hover:shadow-md transition-shadow duration-200 block"
       >
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900">
-            {{ stock.symbol }}
-          </h3>
+        <div class="flex items-start justify-between mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-lg font-semibold text-gray-900">
+                {{ stock.symbol }}
+              </h3>
+              <span class="text-xs text-gray-500">{{ stock.currency || 'USD' }}</span>
+            </div>
+            <p v-if="stock.name" class="text-xs text-gray-500">
+              {{ stock.name }}
+            </p>
+          </div>
           <div
             :class="[
               'px-2 py-1 rounded-full text-xs font-medium',
@@ -142,8 +228,9 @@
 
         <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <span class="text-2xl font-bold text-gray-900">
-              {{ formatPrice(stock.price) }}
+            <span class="text-2xl font-bold text-gray-900 flex items-center gap-1">
+              <Icon class="w-[1.1em] h-[1.1em] text-green-500" icon="mdi:currency-usd" />
+              {{ formatPrice(stock.price, stock.currency) }}
             </span>
             <span
               :class="[
@@ -155,14 +242,20 @@
             </span>
           </div>
 
-          <div class="pt-3 border-t border-gray-100">
-            <div class="flex justify-between text-sm text-gray-600">
-              <span>Volume</span>
+          <div class="pt-3 border-t border-gray-100 grid grid-cols-2 gap-2 text-sm text-gray-600">
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1">
+                <Icon class="w-4 h-4 text-gray-400" icon="mdi:swap-vertical" />
+                Volume
+              </span>
               <span class="font-medium">{{ formatVolume(stock.volume) }}</span>
             </div>
-            <div class="flex justify-between text-sm text-gray-600 mt-1">
-              <span>Clôture précédente</span>
-              <span class="font-medium">{{ formatPrice(stock.previousClose) }}</span>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1">
+                <Icon class="w-4 h-4 text-gray-400" icon="mdi:chart-line" />
+                Clôture préc.
+              </span>
+              <span class="font-medium">{{ formatPrice(stock.previousClose, stock.currency) }}</span>
             </div>
           </div>
         </div>
@@ -186,20 +279,6 @@
         @click="fetchStocks"
       >
         Réessayer
-      </button>
-    </div>
-
-    <!-- Refresh Button -->
-    <div v-if="stocks.length > 0" class="mt-8 text-center">
-      <button
-        :disabled="loading"
-        class="btn-secondary"
-        @click="fetchStocks"
-      >
-        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        Actualiser les données
       </button>
     </div>
   </div>

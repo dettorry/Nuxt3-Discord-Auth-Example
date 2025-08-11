@@ -1,69 +1,138 @@
-import { H3Event } from 'h3';
+import { H3Event, getQuery } from 'h3';
 import yahooFinance from 'yahoo-finance2';
 
-export default defineEventHandler(async (_event: H3Event) => {
-  // No API key required for yahoo-finance2
+type StockItem = {
+  symbol: string;
+  name?: string | null;
+  currency?: string | null;
+  price: number;
+  change: number;
+  changePercent: string; // keep string for UI formatting consistency
+  volume: number;
+  previousClose: number;
+};
 
-  const symbols = [
-    'AAPL',
-    'GOOGL',
-    'MSFT',
-    'AMZN',
-    'TSLA',
-    'META',
-    'NVDA',
-    'NFLX',
-  ];
-  const results = [];
+// Simple in-memory cache to reduce jitter and API load
+const CACHE_TTL_MS = 60_000; // 1 minute
+let cache: { ts: number; data: StockItem[] } | null = null;
 
-  try {
-    // Fetch data for each symbol (limited to avoid API rate limits)
-    const fetchedResults = await Promise.all(
-      symbols.slice(0, 4).map(async (symbol) => {
-        try {
-          const quote = await yahooFinance.quote(symbol);
+const SYMBOLS = [
+  'AAPL',
+  'GOOGL',
+  'MSFT',
+  'AMZN',
+  'TSLA',
+  'META',
+  'NVDA',
+  'NFLX',
+];
+
+// Static deterministic fallbacks (only used if no cache and API fails)
+const STATIC_FALLBACKS: Record<string, StockItem> = Object.fromEntries(
+  SYMBOLS.map(s => [
+    s,
+    {
+      symbol: s,
+      name: s,
+      currency: 'USD',
+      price: 100,
+      change: 0,
+      changePercent: '0.00',
+      volume: 0,
+      previousClose: 100,
+    },
+  ]),
+);
+
+export default defineEventHandler(async (event: H3Event) => {
+  const { symbols } = getQuery(event) as { symbols?: string };
+  // If caller provided symbols, fetch those directly (no shared cache)
+  if (symbols) {
+    const list = symbols
+      .split(',')
+      .map(s => s.trim().toUpperCase())
+      .filter(Boolean)
+      .slice(0, 50);
+    if (list.length === 0) {
+      return { stocks: [] };
+    }
+    try {
+      const quotes = await yahooFinance.quote(list as unknown as string[]);
+      const out: StockItem[] = list.map((symbol) => {
+        const q = (Array.isArray(quotes) ? quotes : [quotes]).find(item => item?.symbol === symbol);
+        if (q) {
           return {
             symbol,
-            price: quote.regularMarketPrice ?? 0,
-            change: quote.regularMarketChange ?? 0,
-            changePercent: (quote.regularMarketChangePercent ?? 0).toFixed(2),
-            volume: quote.regularMarketVolume ?? 0,
-            previousClose: quote.regularMarketPreviousClose ?? 0,
-          };
-        } catch {
-          // Add mock data for demo purposes if API fails
-          return {
-            symbol,
-            price: Math.random() * 200 + 50,
-            change: (Math.random() - 0.5) * 10,
-            changePercent: ((Math.random() - 0.5) * 5).toFixed(2),
-            volume: Math.floor(Math.random() * 10000000),
-            previousClose: Math.random() * 200 + 50,
+            name: q.shortName || (q as any).longName || symbol,
+            currency: q.currency || 'USD',
+            price: q.regularMarketPrice ?? 0,
+            change: q.regularMarketChange ?? 0,
+            changePercent: (q.regularMarketChangePercent ?? 0).toFixed(2),
+            volume: q.regularMarketVolume ?? 0,
+            previousClose: q.regularMarketPreviousClose ?? 0,
           };
         }
-      }),
-    );
+        return STATIC_FALLBACKS[symbol] ?? {
+          symbol,
+          name: symbol,
+          currency: 'USD',
+          price: 0,
+          change: 0,
+          changePercent: '0.00',
+          volume: 0,
+          previousClose: 0,
+        };
+      });
+      return { stocks: out };
+    } catch (err: any) {
+      // On failure, return empty to signal client to retry/change input
+      return { stocks: [] };
+    }
+  }
 
-    results.push(...fetchedResults);
+  // Default curated list with cache
+  const now = Date.now();
+  if (cache && now - cache.ts < CACHE_TTL_MS) {
+    return { stocks: cache.data };
+  }
 
-    // Add mock data for remaining symbols to demonstrate the UI
-    const remainingSymbols = symbols.slice(4);
-    results.push(
-      ...remainingSymbols.map(symbol => ({
-        symbol,
-        price: Math.random() * 200 + 50,
-        change: (Math.random() - 0.5) * 10,
-        changePercent: ((Math.random() - 0.5) * 5).toFixed(2),
-        volume: Math.floor(Math.random() * 10000000),
-        previousClose: Math.random() * 200 + 50,
-      })),
-    );
+  try {
+    // Fetch all quotes. yahoo-finance2 supports array input for quote.
+    const quotes = await yahooFinance.quote(SYMBOLS as unknown as string[]);
+    const bySymbol = new Map<string, any>();
+    const list = Array.isArray(quotes) ? quotes : [quotes];
+    list.forEach((q) => {
+      if (q?.symbol) {
+        bySymbol.set(q.symbol, q);
+      }
+    });
 
+    const results: StockItem[] = SYMBOLS.map((symbol) => {
+      const q = bySymbol.get(symbol);
+      if (q) {
+        return {
+          symbol,
+          name: q.shortName || q.longName || symbol,
+          currency: q.currency || 'USD',
+          price: q.regularMarketPrice ?? 0,
+          change: q.regularMarketChange ?? 0,
+          changePercent: (q.regularMarketChangePercent ?? 0).toFixed(2),
+          volume: q.regularMarketVolume ?? 0,
+          previousClose: q.regularMarketPreviousClose ?? 0,
+        };
+      }
+      // Fallback to previous cache or static values
+      const cached = cache?.data.find(it => it.symbol === symbol);
+      return cached ?? STATIC_FALLBACKS[symbol];
+    });
+
+    cache = { ts: now, data: results };
     return { stocks: results };
   } catch (error: any) {
-    throw createError({
-      statusCode: 502,
-      statusMessage: error?.message || 'Failed to fetch stock data',
-    });
+    // On total failure, try cache or static
+    if (cache) {
+      return { stocks: cache.data };
+    }
+    return { stocks: SYMBOLS.map(s => STATIC_FALLBACKS[s]) };
   }
 });
