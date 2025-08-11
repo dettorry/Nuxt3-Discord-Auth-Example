@@ -1,51 +1,55 @@
 <template>
-  <div class="flex h-screen bg-white border-r border-gray-200">
+  <div class="sticky top-0 h-screen bg-white border-r border-gray-200">
     <div 
       :class="[
-        'flex flex-col transition-all duration-300 ease-in-out',
-        isCollapsed ? 'w-16' : 'w-64'
+        'flex flex-col h-screen overflow-y-auto transition-all duration-300 ease-in-out',
+        isCollapsed ? 'w-20' : 'w-56'
       ]"
     >
       <!-- Logo/Brand -->
       <div class="flex items-center justify-center h-16 border-b border-gray-200">
         <div v-if="!isCollapsed" class="flex items-center space-x-2">
-          <div class="w-8 h-8 bg-discord-500 rounded-lg flex items-center justify-center">
-            <span class="text-white font-bold text-sm">D</span>
-          </div>
-          <span class="font-semibold text-gray-900">Discord Bot</span>
+          <img src="/assets/img/cup-mascot.png" alt="Logo" class="w-8 h-8 rounded-lg object-cover" />
+          <span class="font-semibold text-gray-900">Chicken Stocks</span>
         </div>
-        <div v-else class="w-8 h-8 bg-discord-500 rounded-lg flex items-center justify-center">
-          <span class="text-white font-bold text-sm">D</span>
+        <div v-else class="w-8 h-8 rounded-lg flex items-center justify-center">
+          <img src="/assets/img/cup-mascot.png" alt="Logo" class="w-8 h-8 object-cover" />
         </div>
       </div>
 
       <!-- Navigation -->
       <nav class="flex-1 px-4 py-6 space-y-2">
-        <NuxtLink 
-          to="/" 
-          class="sidebar-link"
-          :class="{ 'active': $route.path === '/' }"
+        <NuxtLink
+          to="/"
+          class="sidebar-link flex items-center"
+          :class="[{ 'active': $route.path === '/' }, isCollapsed ? 'justify-center px-2' : '']"
+          :title="isCollapsed ? 'Marchés' : undefined"
+          aria-label="Marchés"
         >
-          <TrendingUpIcon class="w-5 h-5 mr-3" />
-          <span v-if="!isCollapsed">Marchés</span>
+          <Icon icon="heroicons-outline:arrow-trending-up" class="w-6 h-6 shrink-0" :class="!isCollapsed ? 'mr-3' : ''" />
+          <span v-if="!isCollapsed" class="align-middle">Marchés</span>
         </NuxtLink>
-        
-        <NuxtLink 
-          to="/portfolio" 
-          class="sidebar-link"
-          :class="{ 'active': $route.path === '/portfolio' }"
+
+        <NuxtLink
+          to="/portfolio"
+          class="sidebar-link flex items-center"
+          :class="[{ 'active': $route.path === '/portfolio' }, isCollapsed ? 'justify-center px-2' : '']"
+          :title="isCollapsed ? 'Portfolio' : undefined"
+          aria-label="Portfolio"
         >
-          <ChartBarIcon class="w-5 h-5 mr-3" />
-          <span v-if="!isCollapsed">Portfolio</span>
+          <Icon icon="heroicons-outline:chart-bar" class="w-6 h-6 shrink-0" :class="!isCollapsed ? 'mr-3' : ''" />
+          <span v-if="!isCollapsed" class="align-middle">Portfolio</span>
         </NuxtLink>
-        
-        <NuxtLink 
-          to="/settings" 
-          class="sidebar-link"
-          :class="{ 'active': $route.path === '/settings' }"
+
+        <NuxtLink
+          to="/settings"
+          class="sidebar-link flex items-center"
+          :class="[{ 'active': $route.path === '/settings' }, isCollapsed ? 'justify-center px-2' : '']"
+          :title="isCollapsed ? 'Paramètres' : undefined"
+          aria-label="Paramètres"
         >
-          <CogIcon class="w-5 h-5 mr-3" />
-          <span v-if="!isCollapsed">Paramètres</span>
+          <Icon icon="heroicons-outline:cog-6-tooth" class="w-6 h-6 shrink-0" :class="!isCollapsed ? 'mr-3' : ''" />
+          <span v-if="!isCollapsed" class="align-middle">Paramètres</span>
         </NuxtLink>
       </nav>
 
@@ -61,8 +65,9 @@
             <p class="text-sm font-medium text-gray-900 truncate">
               {{ user.username }}
             </p>
-            <div v-if="balance" class="text-xs text-gray-500">
-              Solde: {{ formatBalance(balance.total || balance.cash || 0) }}€
+            <div v-if="balance" class="flex items-center text-xs text-gray-500 gap-1">
+              <span>Solde: {{ balance.total || 0 }}</span>
+              <Icon icon="mdi:chicken-leg-outline" />
             </div>
           </div>
         </div>
@@ -72,11 +77,7 @@
 </template>
 
 <script setup lang="ts">
-  import { 
-    TrendingUpIcon, 
-    ChartBarIcon, 
-    CogIcon 
-  } from '@heroicons/vue/24/outline';
+  import { Icon } from '@iconify/vue';
 
   interface Props {
     isCollapsed: boolean;
@@ -85,8 +86,4 @@
   }
 
   defineProps<Props>();
-
-  function formatBalance(amount: number): string {
-    return (amount / 100).toFixed(2);
-  }
 </script>

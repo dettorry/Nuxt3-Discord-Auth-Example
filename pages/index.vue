@@ -5,12 +5,12 @@
   const errorMsg = ref<string | null>(null);
 
   // Redirect to login if not authenticated
-  if (!loggedIn.value) {
+  if (!loggedIn) {
     await navigateTo('/auth/login');
   }
 
   async function fetchStocks() {
-    if (!loggedIn.value) {
+    if (!loggedIn) {
       return;
     }
     
@@ -57,7 +57,7 @@
 
   // Fetch stocks on component mount
   onMounted(() => {
-    if (loggedIn.value) {
+    if (loggedIn) {
       fetchStocks();
     }
   });
@@ -180,18 +180,4 @@
     transform: translateY(-2px);
   }
 </style>
-      </p>
-
-      <p v-if="errorMsg" style="color: #c00;">
-        {{ errorMsg }}
-      </p>
-      <div v-if="balance !== null">
-        <p><strong>Solde</strong></p>
-        <pre style="white-space: pre-wrap;">{{ balance }}</pre>
-      </div>
-      <p v-else-if="!loading && !errorMsg">
-        Aucun solde disponible.
-      </p>
-    </div>
-  </div>
-</template>
+ 

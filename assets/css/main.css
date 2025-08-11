@@ -3,29 +3,13 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-gray-50 text-gray-900;
-  }
+  body { @apply bg-gray-50 text-gray-900; }
 }
 
 @layer components {
-  .btn-primary {
-    @apply bg-discord-500 hover:bg-discord-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
-  }
-  
-  .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
-  }
-  
-  .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
-  }
-  
-  .sidebar-link {
-    @apply flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors duration-200;
-  }
-  
-  .sidebar-link.active {
-    @apply bg-discord-50 text-discord-600 border-r-2 border-discord-500;
-  }
+  .btn-primary { @apply bg-discord-500 hover:bg-discord-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200; }
+  .btn-secondary { @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200; }
+  .card { @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6; }
+  .sidebar-link { @apply flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors duration-200; }
+  .sidebar-link.active { @apply bg-discord-50 text-discord-600 border-r-2 border-discord-500; }
 }

@@ -81,7 +81,7 @@
   const { user, loggedIn } = useAuth();
 
   // Redirect to login if not authenticated
-  if (!loggedIn.value) {
+  if (!loggedIn) {
     await navigateTo('/auth/login');
   }
 </script>
