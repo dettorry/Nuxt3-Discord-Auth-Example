@@ -9,20 +9,115 @@
       </p>
     </div>
 
-    <div class="card text-center py-12">
-      <Icon
-        class="w-12 h-12 text-gray-400 mx-auto mb-4"
-        icon="mdi:chart-line"
-      />
+    <!-- Loading / Error -->
+    <div v-if="loading" class="card text-center py-12">
+      <div class="flex items-center justify-center space-x-3">
+        <Icon class="w-6 h-6 text-discord-500 animate-spin" icon="mdi:loading" />
+        <span class="text-gray-600">Chargement du portfolio...</span>
+      </div>
+    </div>
+    <div v-else-if="errorMsg" class="card text-center py-6 text-red-600">
+      {{ errorMsg }}
+    </div>
+
+    <!-- Empty State -->
+    <div v-else-if="positions.length === 0" class="card text-center py-12">
+      <Icon class="w-12 h-12 text-gray-400 mx-auto mb-4" icon="mdi:chart-line" />
       <h3 class="text-lg font-medium text-gray-900 mb-2">
         Portfolio vide
       </h3>
       <p class="text-gray-600 mb-4">
         Vous n'avez pas encore d'investissements dans votre portfolio.
       </p>
-      <button class="btn-primary">
+      <NuxtLink to="/" class="btn-primary">
         Commencer à investir
-      </button>
+      </NuxtLink>
+    </div>
+
+    <!-- Summary -->
+    <div v-else class="space-y-6">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div class="card">
+          <div class="text-sm text-gray-600">
+            Valeur de marché
+          </div>
+          <div class="text-2xl font-bold">
+            {{ formatCurrency(totalMarketValue) }}
+          </div>
+        </div>
+        <div class="card">
+          <div class="text-sm text-gray-600">
+            Coût total
+          </div>
+          <div class="text-2xl font-bold">
+            {{ formatCurrency(totalCost) }}
+          </div>
+        </div>
+        <div class="card">
+          <div class="text-sm text-gray-600">
+            P/L total
+          </div>
+          <div :class="['text-2xl font-bold', totalPL >= 0 ? 'text-green-600' : 'text-red-600']">
+            {{ formatCurrency(totalPL) }} ({{ formatPercent(totalPLPct) }})
+          </div>
+        </div>
+      </div>
+
+      <!-- Positions Table -->
+      <div class="card overflow-x-auto">
+        <table class="min-w-full">
+          <thead>
+            <tr class="text-left text-sm text-gray-500">
+              <th class="py-2 pr-4">
+                Symbole
+              </th>
+              <th class="py-2 pr-4">
+                Quantité
+              </th>
+              <th class="py-2 pr-4">
+                Prix moyen
+              </th>
+              <th class="py-2 pr-4">
+                Prix actuel
+              </th>
+              <th class="py-2 pr-4">
+                Valeur
+              </th>
+              <th class="py-2 pr-4">
+                P/L
+              </th>
+              <th class="py-2 pr-4" />
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in positions" :key="p.symbol" class="border-t border-gray-100">
+              <td class="py-2 pr-4 font-medium text-gray-900">
+                {{ p.symbol }}
+              </td>
+              <td class="py-2 pr-4">
+                {{ p.quantity }}
+              </td>
+              <td class="py-2 pr-4">
+                {{ formatCurrency(p.avgCost) }}
+              </td>
+              <td class="py-2 pr-4">
+                {{ formatCurrency(p.currentPrice) }}
+              </td>
+              <td class="py-2 pr-4">
+                {{ formatCurrency(p.marketValue) }}
+              </td>
+              <td class="py-2 pr-4" :class="p.pl >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ formatCurrency(p.pl) }} ({{ formatPercent(p.plPct) }})
+              </td>
+              <td class="py-2 pr-4">
+                <NuxtLink :to="`/stocks/${p.symbol}`" class="text-sm text-green-700 hover:underline">
+                  Voir
+                </NuxtLink>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -36,4 +131,122 @@
   if (!loggedIn) {
     await navigateTo('/auth/login');
   }
+
+  type Lot = { symbol: string; quantity: number; unitPrice: number; ts: number };
+  type Position = {
+    symbol: string;
+    quantity: number;
+    avgCost: number;
+    totalCost: number;
+    currentPrice: number;
+    marketValue: number;
+    pl: number;
+    plPct: number;
+  };
+
+  const loading = ref(false);
+  const errorMsg = ref<string | null>(null);
+  const positions = ref<Position[]>([]);
+
+  function portfolioKey() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const auth: any = (useAuth?.() as any) || {};
+    const uid = auth?.user?.id || auth?.user?.value?.id || 'anon';
+    const cfg = useRuntimeConfig?.();
+    const gid = (cfg as any)?.GUILD_ID || 'defaultGuild';
+    return `portfolio:${uid}:${gid}`;
+  }
+
+  function readPortfolio(): Lot[] {
+    if (process.server) {
+      return [];
+    }
+    try {
+      const raw = localStorage.getItem(portfolioKey());
+      return raw ? (JSON.parse(raw) as Lot[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function aggregateLots(lots: Lot[]) {
+    // { symbol -> { qty, costSum } }
+    const map = lots.reduce((acc, l) => {
+      const s = l.symbol;
+      const cur = acc.get(s) || { qty: 0, costSum: 0 };
+      cur.qty += l.quantity;
+      cur.costSum += l.quantity * l.unitPrice;
+      acc.set(s, cur);
+      return acc;
+    }, new Map<string, { qty: number; costSum: number }>());
+    return Array.from(map.entries()).map(([s, v]) => ({
+      symbol: s,
+      quantity: v.qty,
+      avgCost: v.qty > 0 ? Math.round(v.costSum / v.qty) : 0,
+      totalCost: v.costSum,
+    }));
+  }
+
+  function formatCurrency(n: number) {
+    return `$${Number(n).toFixed(0)}`; // integer amounts
+  }
+  function formatPercent(n: number) {
+    return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+  }
+
+  async function loadPortfolio() {
+    if (process.server) {
+      return;
+    }
+    loading.value = true;
+    errorMsg.value = null;
+    positions.value = [];
+    try {
+      const lots = readPortfolio();
+      const base = aggregateLots(lots);
+      if (base.length === 0) {
+        positions.value = [];
+        return;
+      }
+      const symbols = base.map(b => b.symbol);
+      // Fetch quotes in parallel
+      const quotes = await Promise.all(symbols.map(s => $fetch<any>('/api/stocks/quote', { params: { symbol: s } })));
+      const priceBySymbol = quotes.reduce<Record<string, number>>((acc, q) => {
+        if (q && q.symbol) {
+          acc[q.symbol] = Math.round(Number(q.price || 0));
+        }
+        return acc;
+      }, {});
+
+      positions.value = base.map((b) => {
+        const currentPrice = Number(priceBySymbol[b.symbol] || 0);
+        const marketValue = currentPrice * b.quantity;
+        const pl = marketValue - b.totalCost;
+        const plPct = b.totalCost > 0 ? (pl / b.totalCost) * 100 : 0;
+        return {
+          symbol: b.symbol,
+          quantity: b.quantity,
+          avgCost: b.avgCost,
+          totalCost: b.totalCost,
+          currentPrice,
+          marketValue,
+          pl,
+          plPct,
+        } as Position;
+      });
+    } catch (e: any) {
+      errorMsg.value = e?.message || 'Erreur lors du chargement du portfolio';
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  const totalMarketValue = computed(() => positions.value.reduce((a, p) => a + p.marketValue, 0));
+  const totalCost = computed(() => positions.value.reduce((a, p) => a + p.totalCost, 0));
+  const totalPL = computed(() => totalMarketValue.value - totalCost.value);
+  const totalPLPct = computed(() => (totalCost.value > 0 ? (totalPL.value / totalCost.value) * 100 : 0));
+
+  onMounted(() => {
+    loadPortfolio();
+  });
 </script>

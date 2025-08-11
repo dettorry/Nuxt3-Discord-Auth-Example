@@ -24,6 +24,58 @@
   const loading = ref(false);
   const errorMsg = ref<string | null>(null);
   const quote = ref<any | null>(null);
+  const qty = ref<number>(1);
+  const txLoading = ref(false);
+  const txMsg = ref<string | null>(null);
+
+  // Local portfolio helpers (stored per user+guild if available in auth/config)
+  type Lot = { symbol: string; quantity: number; unitPrice: number; ts: number };
+  function portfolioKey() {
+    // Optional user and guild for namespacing
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const auth: any = (useAuth?.() as any) || {};
+    const uid = auth?.user?.id || auth?.user?.value?.id || 'anon';
+    const cfg = useRuntimeConfig?.();
+    const gid = (cfg as any)?.GUILD_ID || 'defaultGuild';
+    return `portfolio:${uid}:${gid}`;
+  }
+  function readPortfolio(): Lot[] {
+    if (process.server) return [];
+    try {
+      const raw = localStorage.getItem(portfolioKey());
+      return raw ? (JSON.parse(raw) as Lot[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  function writePortfolio(lots: Lot[]) {
+    if (process.server) return;
+    localStorage.setItem(portfolioKey(), JSON.stringify(lots));
+  }
+  function addLot(lot: Lot) {
+    const lots = readPortfolio();
+    lots.push(lot);
+    writePortfolio(lots);
+  }
+  function removeFromPortfolio(sym: string, count: number) {
+    const reduced = readPortfolio().reduce(
+      (acc, lot) => {
+        if (acc.remaining <= 0 || lot.symbol !== sym) {
+          acc.list.push(lot);
+          return acc;
+        }
+        if (lot.quantity > acc.remaining) {
+          acc.list.push({ ...lot, quantity: lot.quantity - acc.remaining });
+          acc.remaining = 0;
+        } else {
+          acc.remaining -= lot.quantity;
+        }
+        return acc;
+      },
+      { list: [] as Lot[], remaining: count },
+    );
+    writePortfolio(reduced.list);
+  }
 
   function formatPrice(n: number | null | undefined) {
     if (n == null) return '-';
@@ -62,6 +114,86 @@
   onMounted(fetchHistory);
   watch(() => selectedPeriod.value, fetchHistory);
   watch(() => route.params.symbol, fetchHistory);
+
+  async function buy() {
+    txMsg.value = null;
+    if (!quote.value) return;
+    const quantity = Math.max(1, Math.floor(qty.value));
+    const unitPrice = Math.round(Number(quote.value.price || 0));
+    if (!unitPrice || unitPrice <= 0) {
+      txMsg.value = 'Prix indisponible';
+      return;
+    }
+    txLoading.value = true;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const auth: any = (useAuth?.() as any) || {};
+      const uid = auth?.user?.id || auth?.user?.value?.id;
+      const cfg = useRuntimeConfig?.();
+      const gid = (cfg as any)?.GUILD_ID;
+      const { error } = await useFetch('/api/stocks/buy', {
+        method: 'POST',
+        body: {
+          userId: uid,
+          guildId: gid,
+          symbol: symbol.value,
+          quantity,
+          unitPrice,
+          reason: `Achat de ${quantity} actions ${symbol.value}`,
+        },
+      });
+      if (error.value) throw new Error((error.value as any)?.message || 'Achat échoué');
+      addLot({ symbol: symbol.value, quantity, unitPrice, ts: Date.now() });
+      txMsg.value = `Achat réussi: ${quantity} ${symbol.value} à $${unitPrice}`;
+    } catch (e: any) {
+      txMsg.value = e?.message || 'Achat échoué';
+    } finally {
+      txLoading.value = false;
+    }
+  }
+
+  async function sell() {
+    txMsg.value = null;
+    if (!quote.value) return;
+    const quantity = Math.max(1, Math.floor(qty.value));
+    const unitPrice = Math.round(Number(quote.value.price || 0));
+    if (!unitPrice || unitPrice <= 0) {
+      txMsg.value = 'Prix indisponible';
+      return;
+    }
+    txLoading.value = true;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const auth: any = (useAuth?.() as any) || {};
+      const uid = auth?.user?.id || auth?.user?.value?.id;
+      const cfg = useRuntimeConfig?.();
+      const gid = (cfg as any)?.GUILD_ID;
+      // Optional: check portfolio holdings locally before selling
+      const lots = readPortfolio();
+      const held = lots.filter(l => l.symbol === symbol.value).reduce((a, b) => a + b.quantity, 0);
+      if (held < quantity) {
+        throw new Error('Quantité insuffisante en portefeuille');
+      }
+      const { error } = await useFetch('/api/stocks/sell', {
+        method: 'POST',
+        body: {
+          userId: uid,
+          guildId: gid,
+          symbol: symbol.value,
+          quantity,
+          unitPrice,
+          reason: `Vente de ${quantity} actions ${symbol.value}`,
+        },
+      });
+      if (error.value) throw new Error((error.value as any)?.message || 'Vente échouée');
+      removeFromPortfolio(symbol.value, quantity);
+      txMsg.value = `Vente réussie: ${quantity} ${symbol.value} à $${unitPrice}`;
+    } catch (e: any) {
+      txMsg.value = e?.message || 'Vente échouée';
+    } finally {
+      txLoading.value = false;
+    }
+  }
 </script>
 
 <template>
@@ -106,6 +238,25 @@
         {{ errorMsg }}
       </div>
       <StockChart v-else :prices="prices" :labels="labels" :period="selectedPeriod" />
+
+      <!-- Trading Controls -->
+      <div v-if="quote" class="mt-4 rounded-md border border-gray-100 bg-white p-4 shadow-sm">
+        <div class="flex items-center gap-3">
+          <label class="text-sm text-gray-700" for="qty">Quantité</label>
+          <input
+            id="qty"
+            v-model.number="qty"
+            type="number"
+            min="1"
+            step="1"
+            class="w-24 rounded border-gray-300 focus:ring-green-500 focus:border-green-500"
+          >
+          <button :disabled="txLoading" class="btn-primary" @click="buy">Acheter</button>
+          <button :disabled="txLoading" class="btn-secondary" @click="sell">Vendre</button>
+        </div>
+        <p v-if="txMsg" class="mt-2 text-sm" :class="txMsg.includes('réussi') ? 'text-green-600' : 'text-red-600'">{{ txMsg }}</p>
+        <p class="mt-1 text-xs text-gray-500">Le prix utilisé est arrondi à l'unité, et le débit/crédit se fait depuis/vers la banque UnbelievaBoat après vérification des fonds.</p>
+      </div>
 
       <!-- Stats Grid -->
       <div v-if="quote" class="mt-6 rounded-md border border-gray-100 bg-white p-4 shadow-sm">
