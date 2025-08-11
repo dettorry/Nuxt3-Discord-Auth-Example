@@ -1,15 +1,23 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  css: ['~/assets/css/main.css'],
   modules: [
     '@nuxt-alt/auth',
     '@pinia/nuxt',
   ],
+  postcss: {
+    plugins: {
+      tailwindcss: {},
+      autoprefixer: {},
+    },
+  },
   runtimeConfig: {
     // Server-only runtime secrets
     UNBELIEVABOAT_TOKEN: process.env.UNBELIEVABOAT_TOKEN,
     DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
     GUILD_ID: process.env.GUILD_ID,
+    ALPHA_VANTAGE_API_KEY: process.env.ALPHA_VANTAGE_API_KEY,
     public: {
       // Put client-exposed vars here if ever needed
     },
