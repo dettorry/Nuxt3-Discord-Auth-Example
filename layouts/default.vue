@@ -1,18 +1,17 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <div v-if="user" class="flex">
+    <div v-if="authUser" class="flex">
       <!-- Sidebar -->
       <AppSidebar
         :is-collapsed="sidebarCollapsed"
-        :user="user"
-        :balance="balance"
+        :user="authUser"
         @close="sidebarCollapsed = true"
       />
 
       <!-- Main Content -->
       <div :class="['flex-1 flex flex-col min-w-0', sidebarCollapsed ? 'flex' : 'hidden md:flex']">
         <AppHeader
-          :user="user"
+          :user="authUser"
           :breadcrumbs="breadcrumbs"
           @toggle-sidebar="toggleSidebar"
         />
@@ -31,11 +30,16 @@
 </template>
 
 <script setup lang="ts">
-  const { user } = useAuth();
-  const route = useRoute();
+  import { provide } from 'vue';
 
+  const runtime = useRuntimeConfig?.();
+  const route = useRoute();
+  const { balance, start: startBalance, stop: stopBalance } = useUnbBalance();
+  const { user: authUser } = useAuth();
   const sidebarCollapsed = ref(false);
-  const balance = ref<any | null>(null);
+
+  // Provide balance to children
+  provide('balance', balance);
 
   function toggleSidebar() {
     sidebarCollapsed.value = !sidebarCollapsed.value;
@@ -75,25 +79,11 @@
     return crumbs;
   });
 
-  // Fetch balance when user is available
-  watch(
-    () => (user as any)?.id ?? (user as any)?.value?.id,
-    async (id) => {
-      if (id) {
-        try {
-          const { data } = await useFetch<{ balance: any }>('/api/balance', {
-            method: 'get',
-            params: { userId: id },
-            cache: 'no-cache',
-          });
-          balance.value = data.value?.balance ?? null;
-        } catch (e) {
-          console.error('Failed to fetch balance:', e);
-        }
-      } else {
-        balance.value = null;
-      }
-    },
-    { immediate: true },
-  );
+  onMounted(() => {
+    const uid = (authUser as any)?.id
+      ?? (authUser as any)?.value?.id;
+    const gid = (runtime as any)?.GUILD_ID;
+    startBalance(uid, gid, 15000);
+  });
+  onUnmounted(() => stopBalance());
 </script>

@@ -16,9 +16,9 @@
         <!-- Bouton close en format mobile -->
         <button
           v-if="!isCollapsed"
-          @click="$emit('close')"
           class="md:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition"
           aria-label="Fermer le menu"
+          @click="$emit('close')"
         >
           <Icon icon="mdi:close" class="w-6 h-6 text-gray-700" />
         </button>
@@ -52,10 +52,10 @@
             <p class="text-sm font-medium text-gray-900 truncate">
               {{ user.username }}
             </p>
-            <div v-if="dynBalance || balance" class="flex items-center text-xs text-gray-500 gap-1">
+            <div v-if="balance" class="flex items-center text-xs text-gray-500 gap-1">
               <span>Solde:
                 <span class="inline-flex items-center gap-1">
-                  {{ formatCoins(dynBalance?.total ?? balance?.total ?? 0) }}
+                  {{ formatCoins(balance?.total ?? 0) }}
                   <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
                 </span>
               </span>
@@ -69,10 +69,17 @@
 
 <script setup lang="ts">
   import { Icon } from '@iconify/vue';
+  import { inject } from 'vue';
+  import type { UnbeliviaboatBalance } from '~/types/unbeliviaboat';
 
-  const runtime = useRuntimeConfig?.();
-  const { user: authUser } = useAuth();
-  const { balance: dynBalance, start: startBalance, stop: stopBalance } = useUnbBalance();
+  interface Props {
+    isCollapsed: boolean;
+    user: any;
+  }
+
+  defineProps<Props>();
+
+  const balance = inject('balance') as UnbeliviaboatBalance;
 
   const navItems = [
     {
@@ -91,23 +98,6 @@
       icon: 'heroicons-outline:cog-6-tooth',
     },
   ];
-
-  interface Props {
-    isCollapsed: boolean;
-    user: any;
-    balance: any;
-  }
-
-  const props = defineProps<Props>();
-  onMounted(() => {
-    const uid = (authUser as any)?.id
-      ?? (authUser as any)?.value?.id
-      ?? (props.user as any)?.id
-      ?? (props.user as any)?.value?.id;
-    const gid = (runtime as any)?.GUILD_ID;
-    startBalance(uid, gid, 15000);
-  });
-  onUnmounted(() => stopBalance());
 
   // Format balance between 0 and 999M with K/M suffixes and fr-FR locale
   function formatCoins(amount?: number | null) {

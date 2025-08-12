@@ -1,5 +1,7 @@
+import type { UnbeliviaboatBalance } from '~/types/unbeliviaboat';
+
 export function useUnbBalance() {
-  const balance = useState<any>('unb-balance', () => null);
+  const balance = useState<UnbeliviaboatBalance | null>('unb-balance', () => null);
   const loading = useState<boolean>('unb-balance-loading', () => false);
   const error = useState<string | null>('unb-balance-error', () => null);
   const timerId = useState<number | null>('unb-balance-timer', () => null);

@@ -10,7 +10,7 @@
     </div>
 
     <!-- Section Compte en Banque -->
-    <div v-if="dynBalance" class="mb-8">
+    <div v-if="balance" class="mb-8">
       <!-- Séparateur visuel -->
       <div class="relative my-8">
         <hr class="border-t-2 border-gray-200">
@@ -24,7 +24,7 @@
             Rang dans le classement
           </div>
           <div class="text-2xl font-bold">
-            #{{ dynBalance.rank }}
+            #{{ balance.rank }}
           </div>
         </div>
         <div class="card">
@@ -33,7 +33,7 @@
           </div>
           <div class="flex gap-1 items-center text-2xl font-bold">
             <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:wallet-outline" />
-            <span>{{ formatCurrency(dynBalance.cash) }}</span>
+            <span>{{ formatCurrency(balance.cash) }}</span>
           </div>
         </div>
         <div class="card">
@@ -42,7 +42,7 @@
           </div>
           <div class="flex gap-1 items-center text-2xl font-bold">
             <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:bank-outline" />
-            <span>{{ formatCurrency(dynBalance.bank) }}</span>
+            <span>{{ formatCurrency(balance.bank) }}</span>
           </div>
         </div>
         <div class="card">
@@ -51,7 +51,7 @@
           </div>
           <div class="flex gap-1 items-center text-2xl font-bold">
             <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
-            <span>{{ formatCurrency(dynBalance.total) }}</span>
+            <span>{{ formatCurrency(balance.total) }}</span>
           </div>
         </div>
       </div>
@@ -194,28 +194,11 @@
 
 <script setup lang="ts">
   import { Icon } from '@iconify/vue';
+  import { inject } from 'vue';
+  import type { UnbeliviaboatBalance } from '~/types/unbeliviaboat';
 
-  const runtime = useRuntimeConfig?.();
-
-  const { balance: dynBalance, start: startBalance, stop: stopBalance } = useUnbBalance();
-
-  const { user: authUser, loggedIn } = useAuth();
-
-  interface Props {
-    user: any;
-    balance: any;
-  }
-
-  const props = defineProps<Props>();
-  onMounted(() => {
-    const uid = (authUser as any)?.id
-      ?? (authUser as any)?.value?.id
-      ?? (props.user as any)?.id
-      ?? (props.user as any)?.value?.id;
-    const gid = (runtime as any)?.GUILD_ID;
-    startBalance(uid, gid, 15000);
-  });
-  onUnmounted(() => stopBalance());
+  const balance = inject('balance') as UnbeliviaboatBalance;
+  const { loggedIn } = useAuth();
 
   // Redirect to login if not authenticated
   if (!loggedIn) {
