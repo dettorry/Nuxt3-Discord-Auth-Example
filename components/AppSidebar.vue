@@ -1,52 +1,42 @@
 <template>
-  <div class="sticky top-0 h-screen bg-white border-r border-gray-200">
+  <div :class="['sticky top-0 h-screen bg-white border-r border-gray-200 transition-all duration-300 ease-in-out', isCollapsed ? 'w-0 md:w-20' : 'w-full md:w-56']">
     <div
-      :class="[
-        'flex flex-col h-screen overflow-y-auto transition-all duration-300 ease-in-out',
-        isCollapsed ? 'w-20' : 'w-56'
-      ]"
+      class="flex flex-col h-screen overflow-y-auto transition-all duration-300 ease-in-out"
     >
       <!-- Logo/Brand -->
-      <div class="flex items-center justify-center h-16 border-b border-gray-200">
+
+      <div
+        class="flex items-center h-16 border-b border-gray-200"
+        :class="{ 'justify-between px-8': !isCollapsed, 'justify-center': isCollapsed }"
+      >
         <div class="flex items-center space-x-2">
           <img src="/assets/img/cup-mascot.png" alt="Logo" class="w-8 h-8 rounded-lg object-cover"></img>
           <span v-if="!isCollapsed" class="font-semibold text-gray-900">Chicken Stocks</span>
         </div>
+        <!-- Bouton close en format mobile -->
+        <button
+          v-if="!isCollapsed"
+          @click="$emit('close')"
+          class="md:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 transition"
+          aria-label="Fermer le menu"
+        >
+          <Icon icon="mdi:close" class="w-6 h-6 text-gray-700" />
+        </button>
       </div>
 
       <!-- Navigation -->
       <nav class="flex-1 px-4 py-6 space-y-2">
         <NuxtLink
-          to="/"
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
           class="sidebar-link flex items-center"
-          :class="[{ 'active': $route.path === '/' }, isCollapsed ? 'justify-center px-2' : '']"
-          :title="isCollapsed ? 'Marchés' : undefined"
-          aria-label="Marchés"
+          :class="[{ 'active': $route.path === item.to }, isCollapsed ? 'justify-center px-2' : '']"
+          :title="isCollapsed ? item.label : undefined"
+          :aria-label="item.label"
         >
-          <Icon icon="heroicons-outline:arrow-trending-up" class="w-6 h-6 shrink-0" :class="!isCollapsed ? 'mr-3' : ''" />
-          <span v-if="!isCollapsed" class="align-middle">Marchés</span>
-        </NuxtLink>
-
-        <NuxtLink
-          to="/portfolio"
-          class="sidebar-link flex items-center"
-          :class="[{ 'active': $route.path === '/portfolio' }, isCollapsed ? 'justify-center px-2' : '']"
-          :title="isCollapsed ? 'Portfolio' : undefined"
-          aria-label="Portfolio"
-        >
-          <Icon icon="heroicons-outline:chart-bar" class="w-6 h-6 shrink-0" :class="!isCollapsed ? 'mr-3' : ''" />
-          <span v-if="!isCollapsed" class="align-middle">Portfolio</span>
-        </NuxtLink>
-
-        <NuxtLink
-          to="/settings"
-          class="sidebar-link flex items-center"
-          :class="[{ 'active': $route.path === '/settings' }, isCollapsed ? 'justify-center px-2' : '']"
-          :title="isCollapsed ? 'Paramètres' : undefined"
-          aria-label="Paramètres"
-        >
-          <Icon icon="heroicons-outline:cog-6-tooth" class="w-6 h-6 shrink-0" :class="!isCollapsed ? 'mr-3' : ''" />
-          <span v-if="!isCollapsed" class="align-middle">Paramètres</span>
+          <Icon :icon="item.icon" class="w-6 h-6 shrink-0" :class="!isCollapsed ? 'mr-3' : ''" />
+          <span v-if="!isCollapsed" class="align-middle">{{ item.label }}</span>
         </NuxtLink>
       </nav>
 
@@ -83,6 +73,24 @@
   const runtime = useRuntimeConfig?.();
   const { user: authUser } = useAuth();
   const { balance: dynBalance, start: startBalance, stop: stopBalance } = useUnbBalance();
+
+  const navItems = [
+    {
+      to: '/',
+      label: 'Marchés',
+      icon: 'heroicons-outline:arrow-trending-up',
+    },
+    {
+      to: '/portfolio',
+      label: 'Portfolio',
+      icon: 'heroicons-outline:chart-bar',
+    },
+    {
+      to: '/settings',
+      label: 'Paramètres',
+      icon: 'heroicons-outline:cog-6-tooth',
+    },
+  ];
 
   interface Props {
     isCollapsed: boolean;

@@ -6,10 +6,11 @@
         :is-collapsed="sidebarCollapsed"
         :user="user"
         :balance="balance"
+        @close="sidebarCollapsed = true"
       />
 
       <!-- Main Content -->
-      <div class="flex-1 flex flex-col min-w-0">
+      <div :class="['flex-1 flex flex-col min-w-0', sidebarCollapsed ? 'flex' : 'hidden md:flex']">
         <AppHeader
           :user="user"
           :breadcrumbs="breadcrumbs"
