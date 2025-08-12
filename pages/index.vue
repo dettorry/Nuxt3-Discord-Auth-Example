@@ -19,11 +19,6 @@
   const search = ref('');
   const lastQuery = ref<string | null>(null);
 
-  // Redirect to login if not authenticated
-  if (!loggedIn) {
-    await navigateTo('/auth/login');
-  }
-
   async function fetchStocks() {
     if (!loggedIn) {
       return;
@@ -131,7 +126,8 @@
 
 <template>
   <div>
-    <div class="mb-8">
+    <LoggedOut v-if="!loggedIn" />
+    <div v-else class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900 mb-2">
         Marchés Boursiers
       </h1>
