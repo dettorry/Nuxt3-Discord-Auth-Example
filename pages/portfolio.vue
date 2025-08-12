@@ -9,6 +9,54 @@
       </p>
     </div>
 
+    <!-- Section Compte en Banque -->
+    <div v-if="dynBalance" class="mb-8">
+      <!-- Séparateur visuel -->
+      <div class="relative my-8">
+        <hr class="border-t-2 border-gray-200">
+        <span class="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 text-gray-500 text-sm uppercase tracking-wider">
+          Votre compte en banque
+        </span>
+      </div>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div class="card">
+          <div class="text-sm text-gray-600">
+            Rang dans le classement
+          </div>
+          <div class="text-2xl font-bold">
+            #{{ dynBalance.rank }}
+          </div>
+        </div>
+        <div class="card">
+          <div class="text-sm text-gray-600">
+            En poche
+          </div>
+          <div class="flex gap-1 items-center text-2xl font-bold">
+            <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:wallet-outline" />
+            <span>{{ formatCurrency(dynBalance.cash) }}</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="text-sm text-gray-600">
+            En banque
+          </div>
+          <div class="flex gap-1 items-center text-2xl font-bold">
+            <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:bank-outline" />
+            <span>{{ formatCurrency(dynBalance.bank) }}</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="text-sm text-gray-600">
+            Total
+          </div>
+          <div class="flex gap-1 items-center text-2xl font-bold">
+            <Icon class="w-[1em] h-[1em] align-middle" icon="mdi:chicken-leg-outline" />
+            <span>{{ formatCurrency(dynBalance.total) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Loading / Error -->
     <div v-if="loading" class="card text-center py-12">
       <div class="flex items-center justify-center space-x-3">
@@ -36,6 +84,13 @@
 
     <!-- Summary -->
     <div v-else class="space-y-6">
+      <!-- Séparateur visuel -->
+      <div class="relative my-8">
+        <hr class="border-t-2 border-gray-200">
+        <span class="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 text-gray-500 text-sm uppercase tracking-wider">
+          Actions détenues
+        </span>
+      </div>
       <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div class="card">
           <div class="text-sm text-gray-600">
@@ -140,7 +195,27 @@
 <script setup lang="ts">
   import { Icon } from '@iconify/vue';
 
-  const { loggedIn } = useAuth();
+  const runtime = useRuntimeConfig?.();
+
+  const { balance: dynBalance, start: startBalance, stop: stopBalance } = useUnbBalance();
+
+  const { user: authUser, loggedIn } = useAuth();
+
+  interface Props {
+    user: any;
+    balance: any;
+  }
+
+  const props = defineProps<Props>();
+  onMounted(() => {
+    const uid = (authUser as any)?.id
+      ?? (authUser as any)?.value?.id
+      ?? (props.user as any)?.id
+      ?? (props.user as any)?.value?.id;
+    const gid = (runtime as any)?.GUILD_ID;
+    startBalance(uid, gid, 15000);
+  });
+  onUnmounted(() => stopBalance());
 
   // Redirect to login if not authenticated
   if (!loggedIn) {
