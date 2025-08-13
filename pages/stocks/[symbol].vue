@@ -4,8 +4,6 @@
   import { useRoute } from 'vue-router';
   import { Icon } from '@iconify/vue';
   import StockChart from '~/components/StockChart.vue';
-  // Client-only page to avoid SSR issues with charting and ensure onMounted triggers on hard reload
-  definePageMeta({ ssr: false });
 
   // Balance polling/refresh composable
   const { refresh: refreshUnbBalance, applyDelta, balance: dynBalance } = useUnbBalance();
