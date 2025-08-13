@@ -4,6 +4,10 @@
   definePageMeta({
     layout: false,
   });
+
+  useHead({
+    title: 'Chicken Stocks - Connexion réussie',
+  });
 </script>
 
 <template>

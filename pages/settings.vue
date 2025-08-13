@@ -71,4 +71,8 @@
   if (!loggedIn) {
     await navigateTo('/auth/login');
   }
+
+  useHead({
+    title: 'Chicken Stocks - Paramètres',
+  });
 </script>

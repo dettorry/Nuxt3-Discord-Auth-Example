@@ -252,6 +252,14 @@
       txLoading.value = false;
     }
   }
+
+  watch(quote, (q) => {
+    useHead({
+      title: q?.longName
+        ? `Chicken Stocks - ${q.longName}`
+        : `Chicken Stocks - ${symbol.value}`,
+    });
+  });
 </script>
 
 <template>

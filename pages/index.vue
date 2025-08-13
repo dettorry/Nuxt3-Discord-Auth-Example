@@ -2,6 +2,13 @@
   import { Icon } from '@iconify/vue';
 
   const { loggedIn } = useAuth();
+
+  useHead({
+    title: loggedIn
+      ? 'Chicken Stocks - Liste des actions'
+      : 'Chicken Stocks - Connexion',
+  });
+
   type StockItem = {
     symbol: string;
     name?: string | null;

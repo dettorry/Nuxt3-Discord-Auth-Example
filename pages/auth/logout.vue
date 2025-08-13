@@ -5,6 +5,10 @@
     layout: false,
   });
 
+  useHead({
+    title: 'Chicken Stocks - Déconnexion',
+  });
+
   const auth = useAuth();
 
   onMounted(async () => {

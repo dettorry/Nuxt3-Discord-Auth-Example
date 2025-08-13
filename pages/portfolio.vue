@@ -205,6 +205,10 @@
     await navigateTo('/auth/login');
   }
 
+  useHead({
+    title: 'Chicken Stocks - Portfolio',
+  });
+
   type Lot = { symbol: string; quantity: number; unitPrice: number; ts: number };
   type Position = {
     symbol: string;

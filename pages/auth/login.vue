@@ -5,6 +5,10 @@
     layout: false,
   });
 
+  useHead({
+    title: 'Chicken Stocks - Connexion',
+  });
+
   useAuth().loginWith('discord');
 
 </script>
