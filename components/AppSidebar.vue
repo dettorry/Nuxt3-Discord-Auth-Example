@@ -31,7 +31,7 @@
           :key="item.to"
           :to="item.to"
           class="sidebar-link flex items-center"
-          :class="[{ 'active': $route.path === item.to }, isCollapsed ? 'justify-center px-2' : '']"
+          :class="[{ 'active': $route.path.includes(item.to) }, isCollapsed ? 'justify-center px-2' : '']"
           :title="isCollapsed ? item.label : undefined"
           :aria-label="item.label"
         >
@@ -83,7 +83,7 @@
 
   const navItems = [
     {
-      to: '/',
+      to: '/stocks',
       label: 'Marchés',
       icon: 'heroicons-outline:arrow-trending-up',
     },

@@ -49,8 +49,12 @@
   const breadcrumbs = computed(() => {
     const crumbs: Array<{ name: string; href?: string }> = [];
 
-    if (route.path === '/') {
-      crumbs.push({ name: 'Marchés Boursiers', href: '/' });
+    if (route.path.startsWith('/stocks')) {
+      crumbs.push({ name: 'Marchés Boursiers', href: '/stocks' });
+      const sym = ((route.params as any)?.symbol ?? '').toString().toUpperCase();
+      if (sym) {
+        crumbs.push({ name: sym });
+      }
       return crumbs;
     }
 
@@ -61,16 +65,6 @@
 
     if (route.path === '/settings') {
       crumbs.push({ name: 'Paramètres' });
-      return crumbs;
-    }
-
-    // Stocks details page: /stocks/:symbol
-    if (route.path.startsWith('/stocks')) {
-      crumbs.push({ name: 'Marchés Boursiers', href: '/' });
-      const sym = ((route.params as any)?.symbol ?? '').toString().toUpperCase();
-      if (sym) {
-        crumbs.push({ name: sym });
-      }
       return crumbs;
     }
 
