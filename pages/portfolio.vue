@@ -198,12 +198,6 @@
   import type { UnbeliviaboatBalance } from '~/types/unbeliviaboat';
 
   const balance = inject('balance') as UnbeliviaboatBalance;
-  const { loggedIn } = useAuth();
-
-  // Redirect to login if not authenticated
-  if (!loggedIn) {
-    await navigateTo('/auth/login');
-  }
 
   useHead({
     title: 'Chicken Stocks - Portfolio',

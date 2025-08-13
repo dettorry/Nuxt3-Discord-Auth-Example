@@ -65,12 +65,7 @@
 </template>
 
 <script setup lang="ts">
-  const { user, loggedIn } = useAuth();
-
-  // Redirect to login if not authenticated
-  if (!loggedIn) {
-    await navigateTo('/auth/login');
-  }
+  const { user } = useAuth();
 
   useHead({
     title: 'Chicken Stocks - Paramètres',
