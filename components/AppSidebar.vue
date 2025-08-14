@@ -44,7 +44,7 @@
       <div class="border-t border-gray-200 p-4">
         <div v-if="user" class="flex items-center space-x-3">
           <img
-            :src="`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`"
+            :src="`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${user.premium_type > 0 && user.avatar.startsWith('a_') ? 'gif' : 'png'}?size=256`"
             :alt="String(user?.username || '')"
             class="w-10 h-10 rounded-full"
           ></img>
