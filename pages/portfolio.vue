@@ -77,7 +77,7 @@
       <p class="text-gray-600 mb-4">
         Vous n'avez pas encore d'investissements dans votre portfolio.
       </p>
-      <NuxtLink to="/" class="btn-primary">
+      <NuxtLink to="/stocks" class="btn-primary">
         Commencer à investir
       </NuxtLink>
     </div>
